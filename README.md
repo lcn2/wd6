@@ -60,4 +60,4 @@ wd6 version: 1.0 2026-05-29
 
 # Reporting Security Issues
 
-To report a security issue, please visit "[Reporting Security Issues](https://github.com/lcn2/XXX/security/policy)".
+To report a security issue, please visit "[Reporting Security Issues](https://github.com/lcn2/wd6/security/policy)".
