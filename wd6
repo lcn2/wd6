@@ -1,0 +1,269 @@
+#!/usr/bin/env bash
+#
+# wd6 - Warhammer 40k dice system
+#
+# Roll 2 or more D6 dice, where the 1st die is the Wrath die.
+#
+# Count successes, sixes, and note if the Wrath die is 1.
+#
+# Copyright (c) 2026 by Landon Curt Noll.  All Rights Reserved.
+#
+# Permission to use, copy, modify, and distribute this software and
+# its documentation for any purpose and without fee is hereby granted,
+# provided that the above copyright, this permission notice and text
+# this comment, and the disclaimer below appear in all of the following:
+#
+#       supporting documentation
+#       source copies
+#       source works derived from this source
+#       binaries derived from this source or from derived source
+#
+# LANDON CURT NOLL DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+# INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO
+# EVENT SHALL LANDON CURT NOLL BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+# CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF
+# USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+# OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+# PERFORMANCE OF THIS SOFTWARE.
+#
+# chongo (Landon Curt Noll) /\oo/\
+#
+# http://www.isthe.com/chongo/index.html
+# https://github.com/lcn2
+#
+# Share and enjoy!  :-)
+
+
+# setup
+#
+export VERSION="1.0.0 2026-05-29"
+NAME=$(basename "$0")
+export NAME
+#
+export V_FLAG=0
+#
+export NOOP=
+export DO_NOT_PROCESS=
+#
+SHUF_TOOL=$(type -P shuf)
+export SHUF_TOOL
+
+
+# usage
+#
+export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-s shuf] count
+
+    -h          print help message and exit
+    -v level    set verbosity level (def level: $V_FLAG)
+    -V          print version string and exit
+
+    -n          go thru the actions, but do not update any files (def: do the action)
+    -N          do not process anything, just parse arguments (def: process something)
+
+    -s shuf     path to the shuf tool (def: $SHUF_TOOL)
+
+    count       number of dice to roll, including the mandatory wrath die
+                    NOTE: must be >= 2
+
+Exit codes:
+     0         all OK
+     1         invalid count, or shuf tool failure
+     2         -h and help string printed or -V and version string printed
+     3         command line error
+     5         some internal tool is not found or not an executable file
+ >= 10         internal error
+
+$NAME version: $VERSION"
+
+
+# d6roll - roll a 6 sides dice
+#
+
+
+# parse command line
+#
+while getopts :hv:VnNs: flag; do
+  case "$flag" in
+    h) echo "$USAGE"
+	exit 2
+	;;
+    v) V_FLAG="$OPTARG"
+	;;
+    V) echo "$VERSION"
+	exit 2
+	;;
+    n) NOOP="-n"
+	;;
+    N) DO_NOT_PROCESS="-N"
+	;;
+    s) SHUF_TOOL="$OPTARG"
+	;;
+    \?) echo "$0: ERROR: invalid option: -$OPTARG" 1>&2
+	echo 1>&2
+	echo "$USAGE" 1>&2
+	exit 3
+	;;
+    :) echo "$0: ERROR: option -$OPTARG requires an argument" 1>&2
+	echo 1>&2
+	echo "$USAGE" 1>&2
+	exit 3
+	;;
+    *) echo "$0: ERROR: unexpected value from getopts: $flag" 1>&2
+	echo 1>&2
+	echo "$USAGE" 1>&2
+	exit 3
+	;;
+  esac
+done
+if [[ $V_FLAG -ge 1 ]]; then
+    echo "$0: debug[1]: debug level: $V_FLAG" 1>&2
+fi
+#
+# remove the options
+#
+shift $(( OPTIND - 1 ));
+#
+# verify arg count
+#
+if [[ $# -ne 1 ]]; then
+    echo "$0: ERROR: expected 1 arg, found: $#" 1>&2
+    echo "$USAGE" 1>&2
+    exit 3
+fi
+#
+# parse args
+#
+export COUNT="$1"
+re='^[0-9]+$'
+if ! [[ $COUNT =~ $re ]] ; then
+   echo "$0: ERROR: count arg must be a number: $COUNT" 1>&2
+   exit 1
+fi
+if [[ $COUNT -lt 2 ]]; then
+   echo "$0: ERROR: count arg must >= 2: $COUNT" 1>&2
+   exit 1
+fi
+((D6_COUNT=COUNT-1))
+export D6_COUNT
+
+
+# verify that the shuf tool is executable
+#
+if [[ ! -e $SHUF_TOOL ]]; then
+    echo  "$0: ERROR: shuf does not exist: $SHUF_TOOL" 1>&2
+    exit 5
+fi
+if [[ ! -f $SHUF_TOOL ]]; then
+    echo  "$0: ERROR: shuf is not a regular file: $SHUF_TOOL" 1>&2
+    exit 5
+fi
+if [[ ! -x $SHUF_TOOL ]]; then
+    echo  "$0: ERROR: shuf is not an executable file: $SHUF_TOOL" 1>&2
+    exit 5
+fi
+
+
+# print running info if verbose
+#
+# If -v 3 or higher, print exported variables in order that they were exported.
+#
+if [[ $V_FLAG -ge 3 ]]; then
+    echo "$0: debug[3]: VERSION=$VERSION" 1>&2
+    echo "$0: debug[3]: NAME=$NAME" 1>&2
+    echo "$0: debug[3]: V_FLAG=$V_FLAG" 1>&2
+    echo "$0: debug[3]: SHUF_TOOL=$SHUF_TOOL" 1>&2
+    echo "$0: debug[3]: COUNT=$COUNT" 1>&2
+    echo "$0: debug[3]: D6_COUNT=$D6_COUNT" 1>&2
+fi
+
+
+# -N stops early before any processing is performed
+#
+if [[ -n $DO_NOT_PROCESS ]]; then
+    if [[ $V_FLAG -ge 3 ]]; then
+	echo "$0: debug[3]: arguments parsed, -N given, exiting 0" 1>&2
+    fi
+    exit 0
+fi
+
+
+# roll dice
+#
+if [[ -z $NOOP ]]; then
+
+    # roll the Wrath die
+    #
+    if [[ $V_FLAG -ge 1 ]]; then
+        echo "$0: debug[1]: about to run: $SHUF_TOOL -i 1-6 -n 1 --repeat" 1>&2
+    fi
+    WRATH=$("$SHUF_TOOL" -i 1-6 -n 1)
+    status="$?"
+    if [[ $status -ne 0 || -z $WRATH ]]; then
+	echo "$0: ERROR: Wrath die:" \
+	    "$SHUF_TOOL -i 1-6 -n 1--repeat failed, error: $status" 1>&2
+	exit 1
+    fi
+
+    # roll the other D6 dice
+    #
+    if [[ $V_FLAG -ge 1 ]]; then
+        echo "$0: debug[1]: about to run: $SHUF_TOOL -i 1-6 -n $D6_COUNT --repeat" 1>&2
+    fi
+    mapfile -t D6_SET < <("$SHUF_TOOL" -i 1-6 -n "$D6_COUNT" --repeat)
+    status="$?"
+    if [[ $status -ne 0 || ${#D6_SET[@]} -le 0 ]]; then
+	echo "$0: ERROR:" \
+	    "mapfile -t D6_SET < <($SHUF_TOOL -i 1-6 -n $D6_COUNT --repeat) failed, error: $status" 1>&2
+	exit 1
+    fi
+    if [[ $V_FLAG -ge 1 ]]; then
+	echo "$0: debug[1]: Warth: $WRATH D6: ${D6_SET[*]}"
+    fi
+
+    # count successes
+    #
+    ((SUCCESS=0))
+    ((SIX_COUNT=0))
+    case "$WRATH" in
+    1) ;;
+    2) ;;
+    3) ;;
+    4) ((++SUCCESS)) ;;
+    5) ((++SUCCESS)) ;;
+    6) ((SUCCESS+=2)); ((++SIX_COUNT)) ;;
+    *)  echo "$0: ERROR: WRATH value is invalid: $WRATH" 1>&2
+	exit 1
+	;;
+    esac
+    for d6 in "${D6_SET[@]}"; do
+	case "$d6" in
+	1) ;;
+	2) ;;
+	3) ;;
+	4) ((++SUCCESS)) ;;
+	5) ((++SUCCESS)) ;;
+	6) ((SUCCESS+=2)); ((++SIX_COUNT)) ;;
+	*)  echo "$0: ERROR: D6 value is invalid: $d6" 1>&2
+	    exit 1
+	    ;;
+	esac
+    done
+
+    # report
+    #
+    if [[ $WRATH -eq 1 ]]; then
+	echo "Successes: $SUCCESS   Sixes: $SIX_COUNT   Wrath: $WRATH !!   D6: ${D6_SET[*]}"
+    else
+	echo "Successes: $SUCCESS   Sixes: $SIX_COUNT   Wrath: $WRATH ..   D6: ${D6_SET[*]}"
+    fi
+
+# case: -n
+#
+elif [[ $V_FLAG -ge 5 ]]; then
+    echo "$0: debug[5]: because of -n, exiting 0" 1>&2
+fi
+
+
+# All Done!!! -- Jessica Noll, Age 2
+#
+exit 0
