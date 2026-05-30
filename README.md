@@ -2,7 +2,7 @@
 
 Roll 2 or more D6 dice, where the 1st die is the Wrath die.
 
-Count successes, sixes, and note if the Wrath die is 1.
+Count successes, sixes, and note if the Wrath die is 1 or 6.
 
 
 # To install
@@ -23,6 +23,9 @@ Successes: 4   Sixes: 1   Wrath: 3 ..   D6: 6 2 5 4
 
 wd6 8
 Successes: 5   Sixes: 0   Wrath: 5 ..   D6: 4 4 3 2 2 5 5
+
+wd 5
+Successes: 5   Sixes: 1   Wrath: 6 ++   D6: 4 4 2 2 5
 
 wd6 4
 Successes: 0   Sixes: 0   Wrath: 1 !!   D6: 2 2 2
@@ -54,7 +57,7 @@ Exit codes:
      5         some internal tool is not found or not an executable file
  >= 10         internal error
 
-wd6 version: 1.0 2026-05-29
+wd6 version: 1.1.0 2026-05-29
 ```
 
 
