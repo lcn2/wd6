@@ -14,4 +14,4 @@ additional information or guidance.
 
 ## Supported Versions
 
-Version: 1.0.0 2026-05-29 and later.
+Version: 1.2.0 2026-05-29

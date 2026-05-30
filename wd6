@@ -36,7 +36,7 @@
 
 # setup
 #
-export VERSION="1.1.1 2026-05-29"
+export VERSION="1.2.0 2026-05-29"
 NAME=$(basename "$0")
 export NAME
 #
@@ -47,11 +47,12 @@ export DO_NOT_PROCESS=
 #
 SHUF_TOOL=$(type -P shuf)
 export SHUF_TOOL
+export SHUF_SRC=
 
 
 # usage
 #
-export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-s shuf] count
+export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-s shuf] [-S shuf_src] count
 
     -h          print help message and exit
     -v level    set verbosity level (def level: $V_FLAG)
@@ -61,6 +62,7 @@ export USAGE="usage: $0 [-h] [-v level] [-V] [-n] [-N] [-s shuf] count
     -N          do not process anything, just parse arguments (def: process something)
 
     -s shuf     path to the shuf tool (def: $SHUF_TOOL)
+    -S shuf_src	set shuf_src as the random source for the shuf tool (def: use the shuf default)
 
     count       number of dice to roll, including the mandatory wrath die
                     NOTE: must be >= 1
@@ -82,7 +84,7 @@ $NAME version: $VERSION"
 
 # parse command line
 #
-while getopts :hv:VnNs: flag; do
+while getopts :hv:VnNs:S: flag; do
   case "$flag" in
     h) echo "$USAGE"
 	exit 2
@@ -97,6 +99,8 @@ while getopts :hv:VnNs: flag; do
     N) DO_NOT_PROCESS="-N"
 	;;
     s) SHUF_TOOL="$OPTARG"
+	;;
+    S) SHUF_SRC="$OPTARG"
 	;;
     \?) echo "$0: ERROR: invalid option: -$OPTARG" 1>&2
 	echo 1>&2
@@ -193,35 +197,70 @@ if [[ -z $NOOP ]]; then
 
     # roll the Wrath die
     #
-    if [[ $V_FLAG -ge 1 ]]; then
-        echo "$0: debug[1]: about to run: $SHUF_TOOL -i 1-6 -n 1 --repeat" 1>&2
-    fi
-    WRATH=$("$SHUF_TOOL" -i 1-6 -n 1)
-    status="$?"
-    if [[ $status -ne 0 || -z $WRATH ]]; then
-	echo "$0: ERROR: Wrath die:" \
-	    "$SHUF_TOOL -i 1-6 -n 1--repeat failed, error: $status" 1>&2
-	exit 1
+    if [[ -z $SHUF_SRC ]]; then
+	if [[ $V_FLAG -ge 1 ]]; then
+	    echo "$0: debug[1]: about to run: $SHUF_TOOL -i 1-6 -n 1 --repeat" 1>&2
+	fi
+	WRATH=$("$SHUF_TOOL" -i 1-6 -n 1)
+	status="$?"
+	if [[ $status -ne 0 || -z $WRATH ]]; then
+	    echo "$0: ERROR: Wrath die:" \
+		"$SHUF_TOOL -i 1-6 -n 1--repeat failed, error: $status" 1>&2
+	    exit 1
+	fi
+    else
+	if [[ $V_FLAG -ge 1 ]]; then
+	    echo "$0: debug[1]: about to run: $SHUF_TOOL -i 1-6 -n 1 --repeat --random-source=$SHUF_SRC" 1>&2
+	fi
+	WRATH=$("$SHUF_TOOL" -i 1-6 -n 1 --random-source="$SHUF_SRC")
+	status="$?"
+	if [[ $status -ne 0 || -z $WRATH ]]; then
+	    echo "$0: ERROR: Wrath die:" \
+		"$SHUF_TOOL -i 1-6 -n 1--repeat --random-source=$SHUF_SRC failed, error: $status" 1>&2
+	    exit 1
+	fi
     fi
 
     # roll the other D6 dice
     #
-    if [[ $D6_COUNT -ge 1 ]]; then
-	if [[ $V_FLAG -ge 1 ]]; then
-	    echo "$0: debug[1]: about to run: $SHUF_TOOL -i 1-6 -n $D6_COUNT --repeat" 1>&2
+    if [[ -z $SHUF_SRC ]]; then
+	if [[ $D6_COUNT -ge 1 ]]; then
+	    if [[ $V_FLAG -ge 1 ]]; then
+		echo "$0: debug[1]: about to run: $SHUF_TOOL -i 1-6 -n $D6_COUNT --repeat" 1>&2
+	    fi
+	    mapfile -t D6_SET < <("$SHUF_TOOL" -i 1-6 -n "$D6_COUNT" --repeat)
+	    status="$?"
+	    if [[ $status -ne 0 || ${#D6_SET[@]} -le 0 ]]; then
+		echo "$0: ERROR:" \
+		    "mapfile -t D6_SET < <($SHUF_TOOL -i 1-6 -n $D6_COUNT --repeat) failed,"
+		    "error: $status" 1>&2
+		exit 1
+	    fi
+	    if [[ $V_FLAG -ge 1 ]]; then
+		echo "$0: debug[1]: Warth: $WRATH D6: ${D6_SET[*]}"
+	    fi
+	elif [[ $V_FLAG -ge 1 ]]; then
+	    echo "$0: debug[1]: Warth: $WRATH"
 	fi
-	mapfile -t D6_SET < <("$SHUF_TOOL" -i 1-6 -n "$D6_COUNT" --repeat)
-	status="$?"
-	if [[ $status -ne 0 || ${#D6_SET[@]} -le 0 ]]; then
-	    echo "$0: ERROR:" \
-		"mapfile -t D6_SET < <($SHUF_TOOL -i 1-6 -n $D6_COUNT --repeat) failed, error: $status" 1>&2
-	    exit 1
+    else
+	if [[ $D6_COUNT -ge 1 ]]; then
+	    if [[ $V_FLAG -ge 1 ]]; then
+		echo "$0: debug[1]: about to run: $SHUF_TOOL -i 1-6 -n $D6_COUNT --repeat --random-source=$SHUF_SRC" 1>&2
+	    fi
+	    mapfile -t D6_SET < <("$SHUF_TOOL" -i 1-6 -n "$D6_COUNT" --repeat --random-source="$SHUF_SRC")
+	    status="$?"
+	    if [[ $status -ne 0 || ${#D6_SET[@]} -le 0 ]]; then
+		echo "$0: ERROR:" \
+		    "mapfile -t D6_SET < <($SHUF_TOOL -i 1-6 -n $D6_COUNT --repeat --random-source=$SHUF_SRC) failed," 
+		    "error: $status" 1>&2
+		exit 1
+	    fi
+	    if [[ $V_FLAG -ge 1 ]]; then
+		echo "$0: debug[1]: Warth: $WRATH D6: ${D6_SET[*]}"
+	    fi
+	elif [[ $V_FLAG -ge 1 ]]; then
+	    echo "$0: debug[1]: Warth: $WRATH"
 	fi
-	if [[ $V_FLAG -ge 1 ]]; then
-	    echo "$0: debug[1]: Warth: $WRATH D6: ${D6_SET[*]}"
-	fi
-    elif [[ $V_FLAG -ge 1 ]]; then
-	echo "$0: debug[1]: Warth: $WRATH"
     fi
 
     # count successes

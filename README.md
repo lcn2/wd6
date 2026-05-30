@@ -8,8 +8,8 @@ Count successes, sixes, and note if the Wrath die is 1 or 6.
 # To install
 
 ```sh
-make clobber all
-sudo make install clobber
+make all
+sudo make install
 ```
 
 
@@ -35,7 +35,7 @@ Successes: 0   Sixes: 0   Wrath: 1 !!   D6: 2 2 2
 # To use
 
 ```
-usage: /usr/local/bin/wd6 [-h] [-v level] [-V] [-n] [-N] [-s shuf] count
+usage: wd6 [-h] [-v level] [-V] [-n] [-N] [-s shuf] [-S shuf_src] count
 
     -h          print help message and exit
     -v level    set verbosity level (def level: 0)
@@ -44,10 +44,11 @@ usage: /usr/local/bin/wd6 [-h] [-v level] [-V] [-n] [-N] [-s shuf] count
     -n          go thru the actions, but do not update any files (def: do the action)
     -N          do not process anything, just parse arguments (def: process something)
 
-    -s shuf     path to the shuf tool (def: .. as found on your $PATH)
+    -s shuf     path to the shuf tool (def: /opt/homebrew/var/homebrew/linked/coreutils/libexec/gnubin/shuf)
+    -S shuf_src	set shuf_src as the random source for the shuf tool (def: use the shuf default)
 
     count       number of dice to roll, including the mandatory wrath die
-                    NOTE: must be >= 2
+                    NOTE: must be >= 1
 
 Exit codes:
      0         all OK
@@ -57,7 +58,7 @@ Exit codes:
      5         some internal tool is not found or not an executable file
  >= 10         internal error
 
-wd6 version: 1.1.1 2026-05-29
+wd6 version: 1.2.0 2026-05-29
 ```
 
 
