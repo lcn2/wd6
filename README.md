@@ -57,7 +57,7 @@ Exit codes:
      5         some internal tool is not found or not an executable file
  >= 10         internal error
 
-wd6 version: 1.1.0 2026-05-29
+wd6 version: 1.1.1 2026-05-29
 ```
 
 
